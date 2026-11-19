@@ -1,4 +1,4 @@
-# 05 — Registrar, consultar e excluir lançamentos e parcelas
+# 05 - Registrar, consultar e excluir lançamentos e parcelas
 
 **Responsável** Pessoa B  
 **Depende de** [04](04-categorias-e-fontes-destinos.md) para reaproveitar a busca de categoria e fonte/destino por ID e usuário  

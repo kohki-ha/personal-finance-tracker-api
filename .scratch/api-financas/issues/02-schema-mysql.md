@@ -1,4 +1,4 @@
-# 02 — Criar o banco e validar as restrições
+# 02 - Criar o banco e validar as restrições
 
 **Responsável** Pessoa B  
 **Depende de** nenhuma  

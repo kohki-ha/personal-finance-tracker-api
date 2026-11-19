@@ -1,4 +1,4 @@
-# 09 — Reproduzir a entrega e ensaiar a apresentação
+# 09 - Reproduzir a entrega e ensaiar a apresentação
 
 **Responsáveis** Pessoa A e Pessoa B  
 **Depende de** [07](07-faturas.md) e [08](08-preparar-entrega.md) integradas na `main`  

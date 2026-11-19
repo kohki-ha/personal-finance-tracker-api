@@ -1,4 +1,4 @@
-# 07 — Prever faturas e calcular o limite dos cartões
+# 07 - Prever faturas e calcular o limite dos cartões
 
 **Responsável** Pessoa A  
 **Depende de** [06](06-relatorios-por-periodo.md) para integrar a rota no router e model de relatórios  

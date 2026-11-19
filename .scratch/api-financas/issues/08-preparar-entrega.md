@@ -1,4 +1,4 @@
-# 08 — Preparar dados de exemplo, README e requisições
+# 08 - Preparar dados de exemplo, README e requisições
 
 **Responsável** Pessoa B  
 **Para começar** [01](01-servidor-e-jwt.md) e [02](02-schema-mysql.md), para usar a configuração e as tabelas reais  

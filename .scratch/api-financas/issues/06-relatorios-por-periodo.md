@@ -1,4 +1,4 @@
-# 06 — Somar movimentações por categoria e por fonte/destino
+# 06 - Somar movimentações por categoria e por fonte/destino
 
 **Responsável** Pessoa A  
 **Depende de** [01](01-servidor-e-jwt.md) para o router protegido, [02](02-schema-mysql.md) para as consultas  

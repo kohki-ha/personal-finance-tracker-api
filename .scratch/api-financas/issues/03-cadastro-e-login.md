@@ -1,4 +1,4 @@
-# 03 — Cadastrar usuário, emitir JWT e consultar o perfil
+# 03 - Cadastrar usuário, emitir JWT e consultar o perfil
 
 **Responsável** Pessoa A  
 **Depende de** [01](01-servidor-e-jwt.md) para o JWT e o router, [02](02-schema-mysql.md) para as tabelas  

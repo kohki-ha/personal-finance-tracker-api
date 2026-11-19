@@ -1,4 +1,4 @@
-# 01 — Subir o Express e proteger as rotas de finanças
+# 01 - Subir o Express e proteger as rotas de finanças
 
 **Responsável** Pessoa A  
 **Depende de** nenhuma  

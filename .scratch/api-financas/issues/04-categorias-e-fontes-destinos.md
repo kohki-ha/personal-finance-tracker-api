@@ -1,4 +1,4 @@
-# 04 — Gerenciar categorias e fontes/destinos
+# 04 - Gerenciar categorias e fontes/destinos
 
 **Responsável** Pessoa B  
 **Depende de** [01](01-servidor-e-jwt.md) para os routers protegidos, [02](02-schema-mysql.md) para as tabelas  

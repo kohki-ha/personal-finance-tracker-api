@@ -1,4 +1,4 @@
-# 10 — Acrescentar indicadores de saúde financeira
+# 10 - Acrescentar indicadores de saúde financeira
 
 **Responsável** Pessoa A, com verificação pela Pessoa B  
 **Depende de** [09](09-conferir-entrega-e-ensaiar.md), com a entrega obrigatória pronta  
