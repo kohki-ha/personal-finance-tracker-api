@@ -21,7 +21,7 @@ function validarCadastro(corpo) {
   if (!formatoCpf.test(cpfInformado) || !cpfValido(cpf)) {
     campos.cpf = 'Informe um CPF válido.';
   }
-  if (!senhaAceitaPeloBcrypt(senha) || senha.length < 8
+  if (!senhaAceitaPeloBcrypt(senha) || [...senha].length < 8
     || !/\p{L}/u.test(senha) || !/\d/.test(senha)) {
     campos.senha = 'Use pelo menos 8 caracteres, incluindo uma letra e um número, e até 72 bytes.';
   }
