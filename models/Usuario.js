@@ -42,4 +42,20 @@ async function cadastrar({ nome, email, cpf, senhaHash }) {
   }
 }
 
-module.exports = { cadastrar };
+async function buscarPorEmail(email) {
+  const [usuarios] = await pool.execute(
+    'SELECT id, nome, email, senha_hash FROM usuarios WHERE email = ?',
+    [email],
+  );
+  return usuarios[0];
+}
+
+async function buscarPorId(id) {
+  const [usuarios] = await pool.execute(
+    'SELECT id, nome, email FROM usuarios WHERE id = ?',
+    [id],
+  );
+  return usuarios[0];
+}
+
+module.exports = { cadastrar, buscarPorEmail, buscarPorId };

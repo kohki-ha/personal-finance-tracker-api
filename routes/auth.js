@@ -1,6 +1,8 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario');
+const protegerRota = require('../middleware/auth');
 const { cpfValido } = require('../utils/cpf');
 
 const router = express.Router();
@@ -60,6 +62,38 @@ router.post('/cadastro', async (req, res) => {
     }
     throw erro;
   }
+});
+
+router.post('/login', async (req, res) => {
+  const { email: emailInformado, senha } = req.body || {};
+  const email = normalizarEmail(emailInformado);
+  const campos = {};
+
+  if (!formatoEmail.test(email) || email.length > 160) campos.email = 'Informe um e-mail válido.';
+  if (typeof senha !== 'string' || !senha || Buffer.byteLength(senha) > 72) {
+    campos.senha = 'Informe uma senha de até 72 bytes.';
+  }
+  if (Object.keys(campos).length > 0) return dadosInvalidos(res, campos);
+
+  const registro = await Usuario.buscarPorEmail(email);
+  if (!registro || !(await bcrypt.compare(senha, registro.senha_hash))) {
+    return res.status(401).json({ erro: 'E-mail ou senha inválidos.' });
+  }
+
+  const usuario = { id: registro.id, nome: registro.nome, email: registro.email };
+  const token = jwt.sign(usuario, process.env.JWT_SECRET, {
+    algorithm: 'HS256',
+    expiresIn: '1h',
+  });
+
+  return res.status(200).json({ token, usuario });
+});
+
+router.get('/me', protegerRota, async (req, res) => {
+  const id = req.auth?.id;
+  const usuario = Number.isInteger(id) && id > 0 ? await Usuario.buscarPorId(id) : undefined;
+  if (!usuario) return res.status(401).json({ erro: 'Usuário não autenticado.' });
+  return res.status(200).json(usuario);
 });
 
 module.exports = router;
