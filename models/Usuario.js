@@ -12,6 +12,11 @@ const categoriasPadrao = [
   ['Outras saídas', 'saida'],
 ];
 
+const camposDuplicados = {
+  uq_usuarios_email: 'email',
+  uq_usuarios_cpf: 'cpf',
+};
+
 async function cadastrar({ nome, email, cpf, senhaHash }) {
   const conexao = await pool.getConnection();
 
@@ -58,4 +63,12 @@ async function buscarPorId(id) {
   return usuarios[0];
 }
 
-module.exports = { cadastrar, buscarPorEmail, buscarPorId };
+function identificarCampoDuplicado(erro) {
+  if (erro.code !== 'ER_DUP_ENTRY') return undefined;
+
+  const chave = erro.sqlMessage?.match(/for key ['`]([^'`]+)['`]$/)?.[1];
+  const restricao = chave?.split('.').pop();
+  return Object.hasOwn(camposDuplicados, restricao) ? camposDuplicados[restricao] : undefined;
+}
+
+module.exports = { cadastrar, buscarPorEmail, buscarPorId, identificarCampoDuplicado };
