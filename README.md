@@ -2,7 +2,7 @@
 
 API REST para registrar receitas e despesas, organizar lançamentos por categoria e acompanhar faturas de cartão. A branch `issues` guarda o planejamento da dupla. As entregas de código são integradas na `main`.
 
-[Plano de trabalho](.scratch/api-financas/spec.md) · [Andamento no GitHub](https://github.com/kohki-ha/backend-projeto2/issues) · [Enunciado da disciplina](https://costasilvati.github.io/IntroNodeJS/projeto-api-financas.html)
+[Plano de trabalho](.scratch/api-financas/spec.md) · [Andamento no GitHub](https://github.com/kohki-ha/personal-finance-tracker-api/issues) · [Enunciado da disciplina](https://costasilvati.github.io/IntroNodeJS/projeto-api-financas.html)
 
 ## Divisão do trabalho
 
