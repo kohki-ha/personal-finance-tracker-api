@@ -9,6 +9,13 @@ As tarefas e o andamento do projeto estão nas [issues do GitHub](https://github
 1. Tenha Node.js com npm e MySQL 8.0.16 ou superior.
 2. Rode `npm ci` para instalar as versões do lockfile.
 3. Copie `.env.example` para `.env` caso o arquivo ainda não exista. Preencha as credenciais locais do MySQL e use `node -p "require('node:crypto').randomBytes(32).toString('hex')"` para gerar o valor de `JWT_SECRET`.
+4. Na raiz do projeto, importe o schema no MySQL local:
+
+   ```bash
+   mysql -u root -p < database/schema.sql
+   ```
+
+   Informe a senha quando o MySQL pedir. Se você usa outra conta com permissão para criar o banco, substitua `root` pelo seu usuário. O script cria o banco `api_financas` e suas tabelas.
 
 Quando o `server.js` estiver disponível, use `npm start` para iniciar a API ou `npm run dev` para trabalhar com reinício automático.
 
