@@ -17,7 +17,7 @@ As tarefas e o andamento do projeto estão nas [issues do GitHub](https://github
 
    Informe a senha quando o MySQL pedir. Se você usa outra conta com permissão para criar o banco, substitua `root` pelo seu usuário. O script cria o banco `api_financas` e suas tabelas.
 
-Quando o `server.js` estiver disponível, use `npm start` para iniciar a API ou `npm run dev` para trabalhar com reinício automático.
+Use `npm start` para iniciar a API ou `npm run dev` para trabalhar com reinício automático.
 
 ## Estrutura prevista
 
