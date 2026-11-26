@@ -1,4 +1,5 @@
 const pool = require('../database/connection');
+const { preverFaturas } = require('../utils/faturas');
 
 class Relatorio {
   async porCategoria(usuarioId, periodo, periodoAnterior) {
@@ -40,6 +41,35 @@ class Relatorio {
       return fonte;
     });
     return { periodo, fontesDestinos };
+  }
+
+  async porFatura(usuarioId, hoje, meses) {
+    const [linhas] = await pool.execute(
+      `SELECT f.id AS cartao_id, f.nome, f.dia_fechamento, f.dia_vencimento, f.limite,
+              l.id, l.descricao, l.data, l.valor, l.parcela_atual, l.total_parcelas
+       FROM fontes_destinos f
+       LEFT JOIN lancamentos l ON l.fonte_destino_id = f.id
+         AND l.usuario_id = f.usuario_id AND l.tipo = 'saida'
+       WHERE f.usuario_id = ? AND f.tipo = 'cartao_credito'
+       ORDER BY f.id, l.data, l.id`,
+      [usuarioId],
+    );
+
+    const cartoes = new Map();
+    for (const { cartao_id, nome, dia_fechamento, dia_vencimento, limite, ...lancamento } of linhas) {
+      if (!cartoes.has(cartao_id)) {
+        cartoes.set(cartao_id, {
+          cartao: { id: cartao_id, nome, dia_fechamento, dia_vencimento, limite },
+          lancamentos: [],
+        });
+      }
+      if (lancamento.id !== null) cartoes.get(cartao_id).lancamentos.push(lancamento);
+    }
+    return {
+      meses,
+      cartoes: Array.from(cartoes.values(), ({ cartao, lancamentos }) =>
+        preverFaturas(cartao, lancamentos, hoje, meses)),
+    };
   }
 }
 
