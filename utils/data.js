@@ -26,4 +26,32 @@ function periodoDoMesAtual(hoje = new Date()) {
   };
 }
 
-module.exports = { dataIsoValida, periodoDoMesAtual };
+function calcularPeriodoAnterior({ inicio, fim }) {
+  const dataInicio = new Date(inicio);
+  const dataFim = new Date(fim);
+  const ano = dataInicio.getUTCFullYear();
+  const mes = dataInicio.getUTCMonth();
+  const ultimoDia = new Date(Date.UTC(ano, mes + 1, 0));
+  const mesCompleto = dataInicio.getUTCDate() === 1 && fim === formatarDataUtc(ultimoDia);
+  const fimAnterior = new Date(dataInicio);
+  fimAnterior.setUTCDate(fimAnterior.getUTCDate() - 1);
+
+  if (mesCompleto) {
+    return {
+      inicio: formatarDataUtc(new Date(Date.UTC(ano, mes - 1, 1))),
+      fim: formatarDataUtc(fimAnterior),
+    };
+  }
+
+  const duracao = dataFim.getTime() - dataInicio.getTime();
+  return {
+    inicio: formatarDataUtc(new Date(fimAnterior.getTime() - duracao)),
+    fim: formatarDataUtc(fimAnterior),
+  };
+}
+
+function formatarDataUtc(data) {
+  return data.toISOString().split('T')[0];
+}
+
+module.exports = { dataIsoValida, periodoDoMesAtual, calcularPeriodoAnterior };
