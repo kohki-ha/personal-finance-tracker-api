@@ -1,4 +1,6 @@
 const pool = require('../database/connection');
+const emTransacao = require('../database/transacao');
+const { mesesDaAnalise, analisarSaudeFinanceira } = require('../utils/saudeFinanceira');
 const { preverFaturas } = require('../utils/faturas');
 
 class Relatorio {
@@ -44,7 +46,34 @@ class Relatorio {
   }
 
   async porFatura(usuarioId, hoje, meses) {
-    const [linhas] = await pool.execute(
+    const cartoes = await this.buscarCartoesComSaidas(usuarioId);
+    return {
+      meses,
+      cartoes: cartoes.map(({ cartao, lancamentos }) => preverFaturas(cartao, lancamentos, hoje, meses)),
+    };
+  }
+
+  async porSaudeFinanceira(usuarioId, hoje) {
+    const { historico } = mesesDaAnalise(hoje);
+    const { linhas, cartoes } = await emTransacao(async (conexao) => {
+      const [linhas] = await conexao.execute(
+        `SELECT DATE_FORMAT(data, '%Y-%m') AS mes,
+                SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END) AS entradas,
+                SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END) AS saidas,
+                SUM(CASE WHEN tipo = 'saida' AND total_parcelas = 1 THEN valor ELSE 0 END) AS saidas_avista
+         FROM lancamentos
+         WHERE usuario_id = ? AND data BETWEEN ? AND ?
+         GROUP BY DATE_FORMAT(data, '%Y-%m')`,
+        [usuarioId, `${historico[0]}-01`, hoje],
+      );
+      const cartoes = await this.buscarCartoesComSaidas(usuarioId, conexao);
+      return { linhas, cartoes };
+    });
+    return analisarSaudeFinanceira(hoje, linhas, cartoes);
+  }
+
+  async buscarCartoesComSaidas(usuarioId, conexao = pool) {
+    const [linhas] = await conexao.execute(
       `SELECT f.id AS cartao_id, f.nome, f.dia_fechamento, f.dia_vencimento, f.limite,
               l.id, l.descricao, l.data, l.valor, l.parcela_atual, l.total_parcelas
        FROM fontes_destinos f
@@ -65,11 +94,7 @@ class Relatorio {
       }
       if (lancamento.id !== null) cartoes.get(cartao_id).lancamentos.push(lancamento);
     }
-    return {
-      meses,
-      cartoes: Array.from(cartoes.values(), ({ cartao, lancamentos }) =>
-        preverFaturas(cartao, lancamentos, hoje, meses)),
-    };
+    return [...cartoes.values()];
   }
 }
 

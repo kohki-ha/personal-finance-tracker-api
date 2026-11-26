@@ -308,6 +308,14 @@ curl.exe -i "$BASE_URL/relatorios/faturas?meses=3" \
   -H "Authorization: Bearer $TOKEN_A"
 ```
 
+## 7. Saúde financeira (bônus)
+
+```bash
+curl.exe -i "$BASE_URL/saude-financeira" -H "Authorization: Bearer $TOKEN_A"
+```
+
+A resposta `200` inclui três indicadores, três meses de projeção, dicas e o aviso educativo. Na apresentação, mostre os indicadores e um saldo previsto logo após as faturas. Reserve cerca de 30 segundos para o bônus dentro dos 10 minutos. Repita com o token de Bruno para conferir o isolamento. Sem token, a rota retorna `401`.
+
 ## Limpar o usuário temporário do teste de cadastro
 
 Se executou o cadastro de `roteiro.unico@example.com`, remova essa conta de demonstração pelo MySQL depois dos testes. A exclusão da conta remove seus dados dependentes pelo `ON DELETE CASCADE`.
