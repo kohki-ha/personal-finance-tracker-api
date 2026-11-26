@@ -40,11 +40,13 @@ Os tokens têm validade de uma hora. Para obter IDs usados abaixo, consulte prim
 curl.exe -i "$BASE_URL/categorias" -H "Authorization: Bearer $TOKEN_A"
 curl.exe -i "$BASE_URL/fontes-destinos" -H "Authorization: Bearer $TOKEN_A"
 curl.exe -i "$BASE_URL/lancamentos" -H "Authorization: Bearer $TOKEN_A"
+curl.exe -i "$BASE_URL/lancamentos" -H "Authorization: Bearer $TOKEN_B"
 ```
 
-Anote os IDs de Ana para uma categoria `saida`, como `Alimentação`, e para o cartão `Cartão Visa Demo`. Anote também o ID de uma parcela de Bruno cuja descrição seja `SEED - Compra parcelada - mochila` (por exemplo, `1/3`) para testar o isolamento de um grupo. Os exemplos usam os nomes abaixo; os IDs são gerados pelo MySQL e podem mudar entre bancos.
+Anote os IDs de Ana para uma categoria `entrada`, como `Salário`, uma categoria `saida`, como `Alimentação`, e para o cartão `Cartão Visa Demo`. Anote também o ID de uma parcela de Bruno cuja descrição seja `SEED - Compra parcelada - mochila` (por exemplo, `1/3`) para testar o isolamento de um grupo. Os exemplos usam os nomes abaixo; os IDs são gerados pelo MySQL e podem mudar entre bancos.
 
 ```bash
+CATEGORIA_ENTRADA_A=cole_o_id_da_categoria_Salario
 CATEGORIA_SAIDA_A=cole_o_id_da_categoria_Alimentacao
 CARTAO_A=cole_o_id_do_Cartao_Visa_Demo
 ID_LANCAMENTO_BRUNO=cole_o_id_de_um_lancamento_de_Bruno
@@ -71,7 +73,7 @@ O CPF abaixo é válido e diferente do usado no cadastro anterior, isolando o te
 ```bash
 curl.exe -i -X POST "$BASE_URL/auth/cadastro" \
   -H "Content-Type: application/json" \
-  -d '{"nome":"Outro usuário","email":"roteiro.unico@example.com","cpf":"10000000108","senha":"Roteiro123"}'
+  -d '{"nome":"Outro usuário","email":"ROTEIRO.UNICO@EXAMPLE.COM","cpf":"10000000108","senha":"Roteiro123"}'
 ```
 
 ### Duplicidade de CPF (`409`, campo `cpf`)
@@ -81,7 +83,7 @@ Use outro e-mail e mantenha o CPF cadastrado na primeira requisição:
 ```bash
 curl.exe -i -X POST "$BASE_URL/auth/cadastro" \
   -H "Content-Type: application/json" \
-  -d '{"nome":"Outro usuário","email":"roteiro.outro@example.com","cpf":"10000000019","senha":"Roteiro123"}'
+  -d '{"nome":"Outro usuário","email":"roteiro.outro@example.com","cpf":"100.000.000-19","senha":"Roteiro123"}'
 ```
 
 ### 2. Login — `POST /auth/login` (`200` ou `401`)
@@ -250,6 +252,14 @@ Crie esta compra e **mantenha os registros** para consultar em todos os relatór
 curl.exe -i -X POST "$BASE_URL/lancamentos" \
   -H "Authorization: Bearer $TOKEN_A" -H "Content-Type: application/json" \
   -d "{\"tipo\":\"saida\",\"descricao\":\"Compra parcelada do roteiro\",\"valor\":900.00,\"data\":\"$DATA_HOJE\",\"categoriaId\":$CATEGORIA_SAIDA_A,\"fonteDestinoId\":$CARTAO_A,\"parcelas\":3}"
+```
+
+### Saída com categoria de entrada (`400`, campo `categoriaId`)
+
+```bash
+curl.exe -i -X POST "$BASE_URL/lancamentos" \
+  -H "Authorization: Bearer $TOKEN_A" -H "Content-Type: application/json" \
+  -d "{\"tipo\":\"saida\",\"descricao\":\"Compra parcelada do roteiro\",\"valor\":900.00,\"data\":\"$DATA_HOJE\",\"categoriaId\":$CATEGORIA_ENTRADA_A,\"fonteDestinoId\":$CARTAO_A,\"parcelas\":3}"
 ```
 
 ### Isolamento: IDs de Bruno com o token de Ana (`404`)

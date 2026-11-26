@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const pool = require('../database/connection');
+const emTransacao = require('../database/transacao');
 
 const CAMPOS_FILTRO = `l.usuario_id = ? AND l.data BETWEEN ? AND ?`;
 
@@ -47,8 +48,8 @@ class Lancamento {
     return { entradas, saidas, saldo: Number((entradas - saidas).toFixed(2)) };
   }
 
-  async buscarPorId(id, usuarioId) {
-    const [itens] = await pool.execute(
+  async buscarPorId(id, usuarioId, conexao = pool) {
+    const [itens] = await conexao.execute(
       `SELECT l.id, l.tipo, l.descricao, l.valor, l.data, l.parcela_atual,
               l.total_parcelas, l.grupo_parcelamento,
               c.id AS categoria_id, c.nome AS categoria_nome,
@@ -72,9 +73,9 @@ class Lancamento {
   }
 
   async criar(usuarioId, dados, valores, grupoId = null) {
-    const conexao = await pool.getConnection();
-    try {
-      await conexao.beginTransaction();
+    return emTransacao(async (conexao) => {
+      const erroVinculo = await conferirVinculos(conexao, usuarioId, dados, valores.length > 1);
+      if (erroVinculo) return erroVinculo;
       const ids = [];
       for (let indice = 0; indice < valores.length; indice += 1) {
         const [resultado] = await conexao.execute(
@@ -87,14 +88,8 @@ class Lancamento {
         );
         ids.push(resultado.insertId);
       }
-      await conexao.commit();
-      return Promise.all(ids.map((id) => this.buscarPorId(id, usuarioId)));
-    } catch (erro) {
-      await conexao.rollback();
-      throw erro;
-    } finally {
-      conexao.release();
-    }
+      return Promise.all(ids.map((id) => this.buscarPorId(id, usuarioId, conexao)));
+    });
   }
 
   async atualizar(id, usuarioId, dados, atual) {
@@ -102,14 +97,20 @@ class Lancamento {
     const tipo = parcelado ? atual.tipo : dados.tipo;
     const data = parcelado ? atual.data : dados.data;
     const fonteDestinoId = parcelado ? atual.fonte_destino_id : dados.fonteDestinoId;
-    const [resultado] = await pool.execute(
-      `UPDATE lancamentos
-       SET tipo = ?, descricao = ?, valor = ?, data = ?, categoria_id = ?, fonte_destino_id = ?
-       WHERE id = ? AND usuario_id = ?`,
-      [tipo, dados.descricao, dados.valor, data, dados.categoriaId, fonteDestinoId, id, usuarioId],
-    );
-    if (!resultado.affectedRows) return undefined;
-    return this.buscarPorId(id, usuarioId);
+    return emTransacao(async (conexao) => {
+      const erroVinculo = await conferirVinculos(
+        conexao, usuarioId, { ...dados, tipo, fonteDestinoId }, parcelado,
+      );
+      if (erroVinculo) return erroVinculo;
+      const [resultado] = await conexao.execute(
+        `UPDATE lancamentos
+         SET tipo = ?, descricao = ?, valor = ?, data = ?, categoria_id = ?, fonte_destino_id = ?
+         WHERE id = ? AND usuario_id = ?`,
+        [tipo, dados.descricao, dados.valor, data, dados.categoriaId, fonteDestinoId, id, usuarioId],
+      );
+      if (!resultado.affectedRows) return undefined;
+      return this.buscarPorId(id, usuarioId, conexao);
+    });
   }
 
   async excluir(id, usuarioId, todasParcelas) {
@@ -117,7 +118,7 @@ class Lancamento {
     try {
       await conexao.beginTransaction();
       const [linhas] = await conexao.execute(
-        'SELECT id, grupo_parcelamento, parcela_atual FROM lancamentos WHERE id = ? AND usuario_id = ? FOR UPDATE',
+        'SELECT id, grupo_parcelamento FROM lancamentos WHERE id = ? AND usuario_id = ? FOR UPDATE',
         [id, usuarioId],
       );
       if (!linhas[0]) {
@@ -128,8 +129,8 @@ class Lancamento {
       if (todasParcelas && lancamento.grupo_parcelamento) {
         await conexao.execute(
           `DELETE FROM lancamentos
-           WHERE usuario_id = ? AND grupo_parcelamento = ? AND parcela_atual >= ?`,
-          [usuarioId, lancamento.grupo_parcelamento, lancamento.parcela_atual],
+           WHERE usuario_id = ? AND grupo_parcelamento = ?`,
+          [usuarioId, lancamento.grupo_parcelamento],
         );
       } else {
         await conexao.execute('DELETE FROM lancamentos WHERE id = ? AND usuario_id = ?', [id, usuarioId]);
@@ -152,6 +153,26 @@ class Lancamento {
     if (filtros.fonteDestinoId) { condicoes.push('l.fonte_destino_id = ?'); parametros.push(filtros.fonteDestinoId); }
     return { sql: condicoes.join(' AND '), parametros };
   }
+}
+
+async function conferirVinculos(conexao, usuarioId, dados, parcelado) {
+  const [[categoria]] = await conexao.execute(
+    'SELECT tipo FROM categorias WHERE id = ? AND usuario_id = ? FOR SHARE',
+    [dados.categoriaId, usuarioId],
+  );
+  if (!categoria) return { vinculoAusente: 'Categoria não encontrada.' };
+  const [[fonte]] = await conexao.execute(
+    'SELECT tipo FROM fontes_destinos WHERE id = ? AND usuario_id = ? FOR SHARE',
+    [dados.fonteDestinoId, usuarioId],
+  );
+  if (!fonte) return { vinculoAusente: 'Fonte ou destino não encontrado.' };
+  if (categoria.tipo !== dados.tipo) {
+    return { campos: { categoriaId: 'A categoria deve ter o mesmo tipo do lançamento.' } };
+  }
+  if (parcelado && (dados.tipo !== 'saida' || fonte.tipo !== 'cartao_credito')) {
+    return { campos: { parcelas: 'O parcelamento só pode ser usado em despesas no cartão de crédito.' } };
+  }
+  return undefined;
 }
 
 function formatarLancamento(linha) {

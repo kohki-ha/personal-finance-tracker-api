@@ -51,6 +51,7 @@ async function atualizar(req, res) {
   try {
     const categoria = await Categoria.atualizar(id, usuarioId, { nome, tipo });
     if (!categoria) return res.status(404).json({ erro: 'Categoria não encontrada.' });
+    if (categoria.conflito) return res.status(409).json({ erro: 'A mudança de tipo deixaria lançamentos incompatíveis com a categoria.' });
     return res.status(200).json(categoria);
   } catch (erro) {
     if (erro.code === 'ER_DUP_ENTRY') {
