@@ -1,6 +1,6 @@
 const express = require('express');
 const Relatorio = require('../models/Relatorio');
-const { dataIsoValida, calcularPeriodoAnterior } = require('../utils/data');
+const { dataIsoValida, calcularPeriodoAnterior, dataLocal } = require('../utils/data');
 
 const router = express.Router();
 
@@ -30,11 +30,7 @@ router.get('/faturas', async (req, res) => {
     });
   }
 
-  const agora = new Date();
-  const ano = agora.getFullYear();
-  const mes = String(agora.getMonth() + 1).padStart(2, '0');
-  const dia = String(agora.getDate()).padStart(2, '0');
-  return res.status(200).json(await Relatorio.porFatura(usuarioId, `${ano}-${mes}-${dia}`, Number(meses)));
+  return res.status(200).json(await Relatorio.porFatura(usuarioId, dataLocal(), Number(meses)));
 });
 
 function identificarUsuario(req, res) {

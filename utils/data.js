@@ -54,4 +54,9 @@ function formatarDataUtc(data) {
   return data.toISOString().split('T')[0];
 }
 
-module.exports = { dataIsoValida, periodoDoMesAtual, calcularPeriodoAnterior };
+function dataLocal(agora = new Date()) {
+  const { inicio } = periodoDoMesAtual(agora);
+  return inicio.slice(0, 8) + String(agora.getDate()).padStart(2, '0');
+}
+
+module.exports = { dataIsoValida, periodoDoMesAtual, calcularPeriodoAnterior, dataLocal };

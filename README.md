@@ -102,3 +102,19 @@ testes/         # Exemplos de requisições e respostas esperadas
 ## Segurança e Git
 
 Não compartilhe nem versione seu `.env`: ele contém credenciais locais. O `.gitignore` já exclui `.env` e `node_modules/`. O arquivo `.env.example` contém apenas nomes e valores de exemplo.
+
+## Bônus de saúde financeira
+
+A rota protegida `GET /saude-financeira` devolve indicadores, uma projeção dos três próximos meses civis e dicas educativas.
+
+| Indicador | Cálculo |
+| --- | --- |
+| `taxaPoupanca` | (Entradas − saídas) ÷ entradas do mês corrente até hoje, pela data do lançamento. Sem entradas, devolve `null`. |
+| `comprometimentoCartoes` | Faturas com vencimento nos próximos três meses ÷ renda estimada para os mesmos três meses. Sem renda estimada, devolve `null`. |
+| `parcelasFuturas` | Soma em reais das parcelas com vencimento hoje ou depois, inclusive além da janela da projeção. |
+
+As duas taxas são frações, como `0.30` para 30%. A projeção usa a média de entradas e gastos à vista dos três últimos meses completos. Se o primeiro movimento da janela for mais recente, a média começa naquele mês e inclui os meses completos vazios seguintes. Sem movimento nesse histórico, as médias valem zero.
+
+Os gastos parcelados ficam fora da média à vista. A projeção soma cada parcela conhecida uma vez, no mês do vencimento, e calcula o saldo daquele mês como entradas menos saídas.
+
+As dicas apontam falta de histórico, taxa de poupança negativa, comprometimento de pelo menos 30% e o primeiro saldo previsto negativo. Quando há histórico e nenhum saldo projetado é negativo, a resposta informa o resultado. O campo `aviso` indica que as informações são educativas e não constituem recomendação financeira profissional.
