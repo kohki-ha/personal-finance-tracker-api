@@ -1,4 +1,5 @@
 const express = require('express');
+const { valorMonetarioValido } = require('../utils/valorMonetario');
 const FonteDestino = require('../models/FonteDestino');
 
 const router = express.Router();
@@ -52,6 +53,7 @@ async function atualizar(req, res) {
   try {
     const fonteDestino = await FonteDestino.atualizar(id, usuarioId, dados);
     if (!fonteDestino) return res.status(404).json({ erro: 'Fonte ou destino não encontrado.' });
+    if (fonteDestino.conflito) return res.status(409).json({ erro: 'A mudança de tipo alteraria o histórico de faturas de saídas vinculadas.' });
     return res.status(200).json(fonteDestino);
   } catch (erro) {
     if (erro.code === 'ER_DUP_ENTRY') {
@@ -110,8 +112,8 @@ function validarFonteDestino(corpoRecebido) {
     if (!Number.isInteger(diaVencimento) || diaVencimento < 1 || diaVencimento > 31) {
       campos.dia_vencimento = 'Informe um dia inteiro entre 1 e 31.';
     }
-    if (typeof limite !== 'number' || !Number.isFinite(limite) || limite <= 0) {
-      campos.limite = 'Informe um limite numérico maior que zero.';
+    if (!valorMonetarioValido(limite)) {
+      campos.limite = 'Informe um limite numérico entre R$ 0,01 e R$ 9.999.999.999,99 com até duas casas decimais.';
     }
   }
 

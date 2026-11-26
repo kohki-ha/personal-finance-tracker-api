@@ -1,6 +1,6 @@
 const express = require('express');
+const { valorMonetarioValido } = require('../utils/valorMonetario');
 const Lancamento = require('../models/Lancamento');
-const Categoria = require('../models/Categoria');
 const FonteDestino = require('../models/FonteDestino');
 const { dataIsoValida, periodoDoMesAtual } = require('../utils/data');
 const { dividirEmCentavos } = require('../utils/parcelas');
@@ -67,24 +67,9 @@ async function criar(req, res) {
   const { dados, campos } = validarLancamento(req.body);
   if (Object.keys(campos).length) return dadosInvalidos(res, campos);
 
-  const [categoria, fonteDestino] = await Promise.all([
-    Categoria.buscarPorId(dados.categoriaId, usuarioId),
-    FonteDestino.buscarPorId(dados.fonteDestinoId, usuarioId),
-  ]);
-  if (!categoria) return res.status(404).json({ erro: 'Categoria não encontrada.' });
-  if (!fonteDestino) return res.status(404).json({ erro: 'Fonte ou destino não encontrado.' });
-  if (categoria.tipo !== dados.tipo) {
-    return dadosInvalidos(res, { categoriaId: 'A categoria deve ter o mesmo tipo do lançamento.' });
-  }
-  const erroOrigem = validarTipoFonteDestino(dados.tipo, fonteDestino.tipo);
-  if (erroOrigem) return dadosInvalidos(res, { fonteDestinoId: erroOrigem });
-
   const parcelas = req.body.parcelas === undefined ? 1 : req.body.parcelas;
   if (!Number.isInteger(parcelas) || parcelas < 1 || parcelas > 48) {
     return dadosInvalidos(res, { parcelas: 'Informe um número inteiro entre 1 e 48.' });
-  }
-  if (parcelas > 1 && (dados.tipo !== 'saida' || fonteDestino.tipo !== 'cartao_credito')) {
-    return dadosInvalidos(res, { parcelas: 'O parcelamento só pode ser usado em despesas no cartão de crédito.' });
   }
   const valores = dividirEmCentavos(dados.valor, parcelas);
   if (valores.some((valor) => valor <= 0)) {
@@ -93,6 +78,8 @@ async function criar(req, res) {
 
   const grupoId = parcelas > 1 ? Lancamento.gerarGrupoId() : null;
   const lancamentos = await Lancamento.criar(usuarioId, dados, valores, grupoId);
+  if (lancamentos?.vinculoAusente) return res.status(404).json({ erro: lancamentos.vinculoAusente });
+  if (lancamentos?.campos) return dadosInvalidos(res, lancamentos.campos);
   if (parcelas === 1) return res.status(201).json(lancamentos[0]);
   return res.status(201).json({ grupoParcelamento: grupoId, lancamentos });
 }
@@ -105,21 +92,26 @@ async function atualizar(req, res) {
   const atual = await Lancamento.buscarDadosEdicao(id, usuarioId);
   if (!atual) return res.status(404).json({ erro: 'Lançamento não encontrado.' });
 
-  const { dados, campos } = validarLancamento(req.body, { atualizacao: true });
+  const { dados, campos } = validarLancamento(req.body);
   if (Object.keys(campos).length) return dadosInvalidos(res, campos);
-  const tipoFinal = atual.grupo_parcelamento ? atual.tipo : dados.tipo;
-  const [categoria, fonteDestino] = await Promise.all([
-    Categoria.buscarPorId(dados.categoriaId, usuarioId),
-    FonteDestino.buscarPorId(dados.fonteDestinoId, usuarioId),
-  ]);
-  if (!categoria) return res.status(404).json({ erro: 'Categoria não encontrada.' });
-  if (!fonteDestino) return res.status(404).json({ erro: 'Fonte ou destino não encontrado.' });
-  if (categoria.tipo !== tipoFinal) {
-    return dadosInvalidos(res, { categoriaId: 'A categoria deve ter o mesmo tipo do lançamento.' });
+  if (atual.grupo_parcelamento) {
+    const camposImutaveis = {};
+    if (dados.tipo !== atual.tipo) camposImutaveis.tipo = 'Preserve o tipo da compra parcelada.';
+    if (dados.data !== atual.data) camposImutaveis.data = 'Preserve a data da compra parcelada.';
+    if (dados.fonteDestinoId !== atual.fonte_destino_id) {
+      const fonte = await FonteDestino.buscarPorId(dados.fonteDestinoId, usuarioId);
+      if (!fonte) return res.status(404).json({ erro: 'Fonte ou destino não encontrado.' });
+      camposImutaveis.fonteDestinoId = 'Preserve o cartão da compra parcelada.';
+    }
+    if (req.body.parcelas !== undefined || req.body.parcela_atual !== undefined
+      || req.body.total_parcelas !== undefined || req.body.grupo_parcelamento !== undefined) {
+      camposImutaveis.parcelas = 'A edição não altera o parcelamento.';
+    }
+    if (Object.keys(camposImutaveis).length) return dadosInvalidos(res, camposImutaveis);
   }
-  const erroOrigem = validarTipoFonteDestino(tipoFinal, fonteDestino.tipo);
-  if (erroOrigem) return dadosInvalidos(res, { fonteDestinoId: erroOrigem });
   const lancamento = await Lancamento.atualizar(id, usuarioId, dados, atual);
+  if (lancamento?.vinculoAusente) return res.status(404).json({ erro: lancamento.vinculoAusente });
+  if (lancamento?.campos) return dadosInvalidos(res, lancamento.campos);
   if (!lancamento) return res.status(404).json({ erro: 'Lançamento não encontrado.' });
   return res.status(200).json(lancamento);
 }
@@ -137,7 +129,7 @@ async function excluir(req, res) {
   return res.status(204).end();
 }
 
-function validarLancamento(corpoRecebido, { atualizacao = false } = {}) {
+function validarLancamento(corpoRecebido) {
   const campos = {};
   const corpo = corpoRecebido && typeof corpoRecebido === 'object' && !Array.isArray(corpoRecebido)
     ? corpoRecebido
@@ -152,26 +144,13 @@ function validarLancamento(corpoRecebido, { atualizacao = false } = {}) {
   if (!tiposLancamento.includes(tipo)) campos.tipo = 'Use entrada ou saida.';
   if (!descricao) campos.descricao = 'Informe uma descrição.';
   else if (descricao.length > 120) campos.descricao = 'Use no máximo 120 caracteres.';
-  if (typeof valor !== 'number' || !Number.isFinite(valor) || valor <= 0 || valor > 9999999999.99) {
-    campos.valor = 'Informe um valor numérico positivo com no máximo duas casas decimais.';
-  } else if (Math.abs(valor * 100 - Math.round(valor * 100)) > 1e-7) {
-    campos.valor = 'Use no máximo duas casas decimais.';
+  if (!valorMonetarioValido(valor)) {
+    campos.valor = 'Informe um valor entre R$ 0,01 e R$ 9.999.999.999,99 com até duas casas decimais.';
   }
   if (!dataIsoValida(data)) campos.data = 'Informe uma data válida no formato AAAA-MM-DD.';
   if (!categoriaId) campos.categoriaId = 'Informe um ID inteiro positivo.';
   if (!fonteDestinoId) campos.fonteDestinoId = 'Informe um ID inteiro positivo.';
-  if (atualizacao && corpo.tipo !== undefined && !tiposLancamento.includes(corpo.tipo)) {
-    campos.tipo = 'Use entrada ou saida.';
-  }
   return { dados: { tipo, descricao, valor, data, categoriaId, fonteDestinoId }, campos };
-}
-
-function validarTipoFonteDestino(tipo, tipoFonte) {
-  if (tipo === 'entrada' && tipoFonte !== 'renda') return 'Entradas devem usar uma fonte do tipo renda.';
-  if (tipo === 'saida' && !['conta', 'cartao_credito'].includes(tipoFonte)) {
-    return 'Despesas devem usar uma conta ou cartão de crédito.';
-  }
-  return undefined;
 }
 
 function validarId(valor) {

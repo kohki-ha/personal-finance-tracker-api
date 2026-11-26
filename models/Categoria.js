@@ -1,4 +1,5 @@
 const pool = require('../database/connection');
+const emTransacao = require('../database/transacao');
 
 class Categoria {
   async listar(usuarioId, tipo) {
@@ -11,8 +12,8 @@ class Categoria {
     return categorias;
   }
 
-  async buscarPorId(id, usuarioId) {
-    const [categorias] = await pool.execute(
+  async buscarPorId(id, usuarioId, conexao = pool) {
+    const [categorias] = await conexao.execute(
       'SELECT id, nome, tipo FROM categorias WHERE id = ? AND usuario_id = ?',
       [id, usuarioId],
     );
@@ -28,11 +29,25 @@ class Categoria {
   }
 
   async atualizar(id, usuarioId, { nome, tipo }) {
-    await pool.execute(
-      'UPDATE categorias SET nome = ?, tipo = ? WHERE id = ? AND usuario_id = ?',
-      [nome, tipo, id, usuarioId],
-    );
-    return this.buscarPorId(id, usuarioId);
+    return emTransacao(async (conexao) => {
+      const [[atual]] = await conexao.execute(
+        'SELECT tipo FROM categorias WHERE id = ? AND usuario_id = ? FOR UPDATE',
+        [id, usuarioId],
+      );
+      if (!atual) return undefined;
+      if (atual.tipo !== tipo) {
+        const [[vinculo]] = await conexao.execute(
+          `SELECT id FROM lancamentos WHERE categoria_id = ? AND usuario_id = ? AND tipo <> ? LIMIT 1`,
+          [id, usuarioId, tipo],
+        );
+        if (vinculo) return { conflito: true };
+      }
+      await conexao.execute(
+        'UPDATE categorias SET nome = ?, tipo = ? WHERE id = ? AND usuario_id = ?',
+        [nome, tipo, id, usuarioId],
+      );
+      return this.buscarPorId(id, usuarioId, conexao);
+    });
   }
 
   async excluir(id, usuarioId) {
