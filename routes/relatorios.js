@@ -19,12 +19,36 @@ router.get('/fontes-destinos', async (req, res) => {
   return res.status(200).json(await Relatorio.porFonteDestino(usuarioId, periodo));
 });
 
-function validarFiltros(req, res) {
+router.get('/faturas', async (req, res) => {
+  const usuarioId = identificarUsuario(req, res);
+  if (!usuarioId) return;
+  const { meses = '3' } = req.query;
+  if (typeof meses !== 'string' || /\D/.test(meses) || Number(meses) < 1 || Number(meses) > 12) {
+    return res.status(400).json({
+      erro: 'Dados inválidos.',
+      campos: { meses: 'Informe um número inteiro entre 1 e 12.' },
+    });
+  }
+
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, '0');
+  const dia = String(agora.getDate()).padStart(2, '0');
+  return res.status(200).json(await Relatorio.porFatura(usuarioId, `${ano}-${mes}-${dia}`, Number(meses)));
+});
+
+function identificarUsuario(req, res) {
   const usuarioId = req.auth?.id;
   if (!Number.isSafeInteger(usuarioId) || usuarioId <= 0) {
     res.status(401).json({ erro: 'Usuário não autenticado.' });
     return undefined;
   }
+  return usuarioId;
+}
+
+function validarFiltros(req, res) {
+  const usuarioId = identificarUsuario(req, res);
+  if (!usuarioId) return undefined;
   const { inicio, fim } = req.query;
   const campos = {};
   if (!dataIsoValida(inicio)) campos.inicio = 'Informe uma data válida no formato AAAA-MM-DD.';
