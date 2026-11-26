@@ -1,6 +1,6 @@
 # Roteiro de requisições da API
 
-Este roteiro usa Git Bash e `curl.exe`, funciona em Windows e usa os usuários fictícios de `database/seed.sql`. Os exemplos que criam ou alteram dados devem ser executados no banco local de demonstração. `curl -i` mostra o status HTTP junto com a resposta JSON.
+Este roteiro usa comandos de Bash e as contas fictícias de `database/seed.sql`. No macOS e no Linux, substitua `curl.exe` por `curl` nos exemplos. No Git Bash do Windows, use os comandos como estão. Faça os testes de escrita no banco local de demonstração. A opção `-i` mostra o status HTTP junto com a resposta JSON.
 
 ## 1. Preparar ambiente e tokens
 
@@ -18,7 +18,7 @@ curl.exe -i -X POST "$BASE_URL/auth/login" \
   -d "{\"email\":\"$EMAIL_A\",\"senha\":\"$SENHA_A\"}"
 ```
 
-O login retorna `200` com `token` e `usuario`. Copie o valor de `token` da resposta e defina-o no Git Bash; não inclua as aspas da resposta:
+O login retorna `200` com `token` e `usuario`. Copie o valor de `token` da resposta para a variável abaixo.
 
 ```bash
 TOKEN_A='cole_aqui_o_token_de_Ana'
@@ -283,7 +283,7 @@ curl.exe -i -X DELETE "$BASE_URL/lancamentos/$ID_LANCAMENTO_BRUNO?todasParcelas=
 
 ## 6. Relatórios
 
-Os relatórios de categorias e fontes/destinos pertencem à issue 06; faturas pertence à issue 07. Se alguma dessas rotas ainda não tiver sido integrada à `main`, deixe o comando preparado e repita-o quando a rota estiver disponível. Com as issues integradas, cada chamada válida retorna `200`.
+Os relatórios por categoria e por fonte/destino usam as datas do intervalo informado. O relatório de faturas usa a quantidade de ciclos futuros solicitada. Uma consulta válida retorna `200`.
 
 O intervalo `INICIO` a `DATA_HOJE`, calculado na seção de lançamentos, inclui os três meses do seed.
 
@@ -309,6 +309,8 @@ curl.exe -i "$BASE_URL/relatorios/faturas?meses=3" \
 ```
 
 ## 7. Saúde financeira (bônus)
+
+### 20. Indicadores e projeção — `GET /saude-financeira` (`200`)
 
 ```bash
 curl.exe -i "$BASE_URL/saude-financeira" -H "Authorization: Bearer $TOKEN_A"

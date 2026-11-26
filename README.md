@@ -4,9 +4,9 @@ API REST para registrar e consultar movimentações financeiras pessoais. O proj
 
 ## Pré-requisitos
 
-- Node.js e npm.
-- MySQL 8.0.16 ou superior. Essa versão é necessária para aplicar as restrições `CHECK` do schema.
-- Git Bash, PowerShell ou outro terminal para executar os comandos.
+- Node.js e npm. Express e bcrypt exigem Node.js 18 ou superior. O projeto foi validado com Node.js 24.
+- MySQL 8.0.16 ou superior para aplicar as restrições `CHECK`, com o cliente `mysql` disponível no terminal.
+- No Windows, use Git Bash para a importação do banco e para o roteiro de requisições.
 
 ## Configuração local
 
@@ -16,6 +16,7 @@ API REST para registrar e consultar movimentações financeiras pessoais. O proj
    git clone https://github.com/kohki-ha/personal-finance-tracker-api.git
    cd personal-finance-tracker-api
    ```
+
 2. Instale as dependências:
 
    ```bash
@@ -51,14 +52,14 @@ API REST para registrar e consultar movimentações financeiras pessoais. O proj
    JWT_SECRET=cole_a_chave_gerada_aqui
    ```
 
-5. Aplique o schema e, em seguida, os dados fictícios de demonstração. No Git Bash ou terminal com o cliente `mysql` no PATH:
+5. Na raiz do projeto, aplique primeiro o schema e depois o seed. No Windows, execute os comandos abaixo no Git Bash.
 
    ```bash
-   mysql -u root -p < database/schema.sql
-   mysql -u root -p api_financas < database/seed.sql
+   mysql --default-character-set=utf8mb4 -u root -p < database/schema.sql
+   mysql --default-character-set=utf8mb4 -u root -p api_financas < database/seed.sql
    ```
 
-   Informe a senha do MySQL quando for solicitada. Se sua conta MySQL tiver outro nome, troque `root` pelo usuário configurado em `.env`. O schema cria o banco `api_financas`; o seed cria dois usuários fictícios, categorias, contas, cartões e movimentações de três meses. O seed pode ser aplicado novamente: ele mantém os usuários/cadastros de demonstração e recria somente os lançamentos marcados como `SEED -`.
+   Informe a senha do MySQL quando for solicitada. Se sua conta MySQL tiver outro nome, troque `root` pelo usuário configurado em `.env`. O schema cria o banco `api_financas`; o seed cria dois usuários fictícios, categorias, contas, cartões e movimentações de três meses. Reaplicar o seed restaura os nomes e as senhas dos usuários fictícios e a configuração das fontes e dos cartões de demonstração. Também recria os lançamentos desses usuários cuja descrição começa com `SEED -`.
 
 6. Inicie a API:
 
@@ -81,11 +82,34 @@ API REST para registrar e consultar movimentações financeiras pessoais. O proj
 | Ana Demonstração | `ana.demo@example.com` | `DemoA2026!` |
 | Bruno Demonstração | `bruno.demo@example.com` | `DemoB2026!` |
 
-Use essas contas somente no banco local de demonstração. As senhas são armazenadas no banco como hashes bcrypt. Os exemplos de autenticação, obtenção de IDs e chamadas às rotas estão em [`testes/requisicoes.md`](testes/requisicoes.md).
+Use essas contas no banco local de demonstração. As senhas são armazenadas como hashes bcrypt.
+
+## Primeiro teste
+
+Com a API rodando, faça login com Ana. No Git Bash do Windows, use `curl.exe` no lugar de `curl`.
+
+```bash
+curl -i -X POST http://localhost:3000/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"ana.demo@example.com","senha":"DemoA2026!"}'
+```
+
+O login retorna `200` com `token` e `usuario`. Copie o token e envie-o como `Authorization: Bearer <token>` nas chamadas protegidas. O [roteiro de requisições](testes/requisicoes.md) mostra como definir os tokens de Ana e Bruno e testar todas as rotas.
 
 ## Rotas
 
-As rotas de autenticação são `/auth/cadastro`, `/auth/login` e `/auth/me`. Os recursos protegidos usam Bearer JWT: `/categorias`, `/fontes-destinos`, `/lancamentos` e `/relatorios`. Consulte o roteiro de requisições para os métodos, exemplos e status HTTP esperados.
+| Recurso | Métodos e caminhos | Acesso |
+| --- | --- | --- |
+| Autenticação | `POST /auth/cadastro`, `POST /auth/login` | Público |
+| Perfil | `GET /auth/me` | Bearer JWT |
+| Categorias | `GET /categorias`, `POST /categorias`, `PUT /categorias/:id`, `DELETE /categorias/:id` | Bearer JWT |
+| Fontes e destinos | `GET /fontes-destinos`, `POST /fontes-destinos`, `PUT /fontes-destinos/:id`, `DELETE /fontes-destinos/:id` | Bearer JWT |
+| Lançamentos | `GET /lancamentos`, `POST /lancamentos`, `GET /lancamentos/:id`, `PUT /lancamentos/:id`, `DELETE /lancamentos/:id` | Bearer JWT |
+| Relatórios por período | `GET /relatorios/categorias`, `GET /relatorios/fontes-destinos` | Bearer JWT |
+| Previsão de faturas | `GET /relatorios/faturas` | Bearer JWT |
+| Saúde financeira | `GET /saude-financeira` | Bearer JWT |
+
+Os relatórios por período exigem `inicio` e `fim` no formato `AAAA-MM-DD`. A previsão de faturas aceita `meses` de 1 a 12, com padrão de 3.
 
 ## Estrutura do projeto
 
